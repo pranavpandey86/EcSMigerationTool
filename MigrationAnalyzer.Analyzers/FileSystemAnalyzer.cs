@@ -65,6 +65,18 @@ namespace MigrationAnalyzer.Analyzers
                             $"UNC path detected: '{value}'",
                             "UNC paths may not be accessible from Linux containers. Ensure the target share is mounted or accessible via network.");
                     }
+                    // Check for Windows environment variables
+                    else if (value.Contains("%APPDATA%", StringComparison.OrdinalIgnoreCase) ||
+                             value.Contains("%PROGRAMFILES%", StringComparison.OrdinalIgnoreCase) ||
+                             value.Contains("%WINDIR%", StringComparison.OrdinalIgnoreCase) ||
+                             value.Contains("%SYSTEMROOT%", StringComparison.OrdinalIgnoreCase) ||
+                             value.Contains("%USERPROFILE%", StringComparison.OrdinalIgnoreCase) ||
+                             value.Contains("%TEMP%", StringComparison.OrdinalIgnoreCase) && value.Contains(":\\"))
+                    {
+                        AddFinding(node.GetLocation(), Severity.High,
+                            $"Windows environment variable detected in path: '{value}'",
+                            "Windows-specific environment variables do not exist on Linux. Use configuration settings or Linux-compatible paths.");
+                    }
                     else if (value.Contains('\\') && !value.Contains('/'))
                     {
                         // Heuristic: if it contains backslashes but no forward slashes, it might be a path
@@ -86,13 +98,44 @@ namespace MigrationAnalyzer.Analyzers
 
             public override void VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
             {
-                if (node.ToString() == "Path.GetTempPath()")
+                var nodeText = node.ToString();
+                
+                if (nodeText == "Path.GetTempPath()")
                 {
                     AddFinding(node.GetLocation(), Severity.Medium,
                         "Path.GetTempPath() usage detected",
                         "Ensure the temporary directory environment variables are correctly set in the container.");
                 }
+                
+                // Detect Environment.GetFolderPath with Windows-specific special folders
+                if (nodeText.Contains("Environment.GetFolderPath"))
+                {
+                    AddFinding(node.GetLocation(), Severity.Medium,
+                        "Environment.GetFolderPath() usage detected",
+                        "Special folder paths differ between Windows and Linux. Use IWebHostEnvironment or configuration-based paths instead.");
+                }
+                
                 base.VisitMemberAccessExpression(node);
+            }
+
+            public override void VisitInvocationExpression(InvocationExpressionSyntax node)
+            {
+                var nodeText = node.ToString();
+                
+                // Check for specific SpecialFolder enum values that are Windows-specific
+                if (nodeText.Contains("SpecialFolder.ProgramFiles") ||
+                    nodeText.Contains("SpecialFolder.ApplicationData") ||
+                    nodeText.Contains("SpecialFolder.LocalApplicationData") ||
+                    nodeText.Contains("SpecialFolder.CommonProgramFiles") ||
+                    nodeText.Contains("SpecialFolder.Windows") ||
+                    nodeText.Contains("SpecialFolder.System"))
+                {
+                    AddFinding(node.GetLocation(), Severity.High,
+                        $"Windows-specific SpecialFolder usage detected in: {nodeText}",
+                        "SpecialFolder values like ProgramFiles, ApplicationData are Windows-specific. Use configuration files or relative paths for cross-platform compatibility.");
+                }
+                
+                base.VisitInvocationExpression(node);
             }
 
             private void AddFinding(Location location, Severity severity, string message, string recommendation)

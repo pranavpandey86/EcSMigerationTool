@@ -24,7 +24,8 @@ namespace MigrationAnalyzer.Analyzers
 
         private static readonly HashSet<string> WindowsTypes = new()
         {
-            "Registry", "RegistryKey", "EventLog", "ServiceController", "WindowsIdentity", "WindowsPrincipal"
+            "Registry", "RegistryKey", "EventLog", "ServiceController", "WindowsIdentity", "WindowsPrincipal",
+            "PerformanceCounter", "PerformanceCounterCategory"
         };
 
         public async Task<IEnumerable<DiagnosticFinding>> AnalyzeAsync(Solution solution, CancellationToken ct)

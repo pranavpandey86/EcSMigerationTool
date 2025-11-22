@@ -1,0 +1,250 @@
+<!DOCTYPE html><html><head><title>Migration Analysis Report</title>
+<meta charset='UTF-8'>
+<style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f5f5f5; }
+                .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                h1 { color: #333; border-bottom: 3px solid #0066cc; padding-bottom: 10px; }
+                h2 { color: #0066cc; margin-top: 30px; }
+                .executive-summary { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                .metric { display: inline-block; margin: 10px 20px; }
+                .metric-label { font-weight: bold; color: #666; }
+                .metric-value { font-size: 24px; color: #0066cc; }
+                .critical { color: #d32f2f; font-weight: bold; }
+                .high { color: #f57c00; font-weight: bold; }
+                .medium { color: #fbc02d; font-weight: bold; }
+                .low { color: #388e3c; font-weight: bold; }
+                .info { color: #1976d2; }
+                table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #0066cc; color: white; cursor: pointer; user-select: none; }
+                th:hover { background-color: #0052a3; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                tr:hover { background-color: #e3f2fd; }
+                .chart-container { display: inline-block; width: 45%; margin: 20px 2%; vertical-align: top; }
+                .bar { background: #0066cc; color: white; padding: 8px; margin: 5px 0; border-radius: 4px; }
+                .filter-box { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+                .filter-box input, .filter-box select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+                .action-plan { background: #fff3e0; padding: 20px; border-left: 4px solid #f57c00; margin: 20px 0; }
+                .priority-item { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+            </style>
+<script src='https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'></script>
+</head><body><div class='container'>
+<h1>🔍 .NET Migration Analysis Report</h1>
+<p><strong>Analysis Date:</strong> 2025-11-22 10:59:41</p>
+<p><strong>Solution:</strong> LegacySolution.sln</p>
+<p><strong>Duration:</strong> 1.96 seconds</p>
+<div class='executive-summary'>
+<h2>📊 Executive Summary</h2>
+<div class='metric'><div class='metric-label'>Total Findings</div><div class='metric-value'>11</div></div>
+<div class='metric'><div class='metric-label'>Files Scanned</div><div class='metric-value'>4</div></div>
+<div class='metric'><div class='metric-label'>Estimated Effort</div><div class='metric-value'>35.0 days</div></div>
+<h3>Findings by Severity</h3>
+<div class='metric'><span class='critical'>Critical</span>: <strong>1</strong></div>
+<div class='metric'><span class='high'>High</span>: <strong>10</strong></div>
+</div>
+<div class='chart-container'><canvas id='severityChart'></canvas></div>
+<div class='chart-container'><canvas id='categoryChart'></canvas></div>
+<div class='action-plan'>
+<h2>🎯 Prioritized Action Plan</h2>
+<div class='priority-item'><strong>PRIORITY 1 - BLOCKERS:</strong> Fix 1 critical issues immediately. These will prevent migration. Estimated: 5 days.</div>
+<div class='priority-item'><strong>PRIORITY 2 - HIGH IMPACT:</strong> Address 10 high-severity issues. These require significant code changes. Estimated: 30 days.</div>
+<div class='priority-item'><strong>PRIORITY 3:</strong> Update configurations and resolve medium/low priority issues.</div>
+<div class='priority-item'><strong>PRIORITY 4:</strong> Implement best practices and optimization recommendations.</div>
+</div>
+<h2>📋 Detailed Findings</h2>
+<div class='filter-box'>
+<input type='text' id='searchBox' placeholder='Search findings...' onkeyup='filterTable()'>
+<select id='severityFilter' onchange='filterTable()'><option value=''>All Severities</option>
+<option value='Critical'>Critical</option>
+<option value='High'>High</option>
+<option value='Medium'>Medium</option>
+<option value='Low'>Low</option>
+<option value='Info'>Info</option>
+</select>
+<select id='categoryFilter' onchange='filterTable()'><option value=''>All Categories</option>
+<option value='WindowsApi'>WindowsApi</option>
+<option value='FileSystem'>FileSystem</option>
+<option value='Security'>Security</option>
+<option value='Configuration'>Configuration</option>
+<option value='Dependencies'>Dependencies</option>
+<option value='General'>General</option>
+</select>
+</div>
+<table id='findingsTable'><thead><tr>
+<th onclick='sortTable(0)'>Severity</th>
+<th onclick='sortTable(1)'>Category</th>
+<th onclick='sortTable(2)'>Rule ID</th>
+<th onclick='sortTable(3)'>File</th>
+<th onclick='sortTable(4)'>Line</th>
+<th onclick='sortTable(5)'>Issue</th>
+<th onclick='sortTable(6)'>Recommendation</th>
+</tr></thead><tbody>
+<tr class='critical-row'>
+<td><span class='critical'>Critical</span></td>
+<td>WindowsApi</td>
+<td>WIN002</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>10</td>
+<td>P/Invoke to native Windows DLL &#39;user32.dll&#39; detected.</td>
+<td>This code will fail on Linux. Replace with a managed equivalent or use conditional compilation with platform checks.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>4</td>
+<td>Usage of Windows-specific namespace &#39;Microsoft.Win32&#39; detected.</td>
+<td>Remove Windows-specific dependencies and use cross-platform alternatives (e.g., Microsoft.Extensions.Configuration instead of Registry).</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>16</td>
+<td>Usage of type &#39;RegistryKey&#39; from Windows-specific namespace &#39;Microsoft.Win32&#39;.</td>
+<td>Replace with cross-platform alternatives compatible with Linux containers.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>16</td>
+<td>Usage of type &#39;Registry&#39; from Windows-specific namespace &#39;Microsoft.Win32&#39;.</td>
+<td>Replace with cross-platform alternatives compatible with Linux containers.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>16</td>
+<td>Usage of Windows-specific type &#39;Registry&#39; detected.</td>
+<td>Replace with cross-platform alternatives. Use ClaimsIdentity for WindowsIdentity, configuration for Registry, and logging for EventLog.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>16</td>
+<td>Usage of type &#39;LocalMachine&#39; from Windows-specific namespace &#39;Microsoft.Win32&#39;.</td>
+<td>Replace with cross-platform alternatives compatible with Linux containers.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>16</td>
+<td>Usage of Windows-specific type &#39;RegistryKey&#39; detected.</td>
+<td>Replace with cross-platform alternatives. Use ClaimsIdentity for WindowsIdentity, configuration for Registry, and logging for EventLog.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>WindowsApi</td>
+<td>WIN001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>16</td>
+<td>Usage of type &#39;OpenSubKey&#39; from Windows-specific namespace &#39;Microsoft.Win32&#39;.</td>
+<td>Replace with cross-platform alternatives compatible with Linux containers.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>FileSystem</td>
+<td>FS001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs'>Program.cs</td>
+<td>19</td>
+<td>Hardcoded Windows path detected: &#39;C:\Temp\data.txt&#39;</td>
+<td>Use Path.Combine and relative paths, or configuration settings for paths. Avoid drive letters.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>Dependencies</td>
+<td>CFG002</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/LegacyApp.csproj'>LegacyApp.csproj</td>
+<td>1</td>
+<td>Windows-specific package detected: &#39;Microsoft.Win32.Registry&#39; version &#39;5.0.0&#39;</td>
+<td>Review package documentation for Linux compatibility or find cross-platform alternatives.</td>
+</tr>
+<tr class='high-row'>
+<td><span class='high'>High</span></td>
+<td>Dependencies</td>
+<td>PKG001</td>
+<td title='/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/LegacyApp.csproj'>LegacyApp.csproj</td>
+<td>1</td>
+<td>Package &#39;Microsoft.Win32.Registry&#39; v5.0.0: Windows-specific registry access</td>
+<td>Windows-specific registry access</td>
+</tr>
+</tbody></table>
+<script>
+const severityData = {
+  labels: ['High', 'Critical'],
+  datasets: [{
+    data: [10, 1],
+    backgroundColor: ['#d32f2f', '#f57c00', '#fbc02d', '#388e3c', '#1976d2']
+  }]
+};
+const categoryData = {
+  labels: ['WindowsApi', 'FileSystem', 'Dependencies'],
+  datasets: [{
+    data: [8, 1, 2],
+    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']
+  }]
+};
+
+new Chart(document.getElementById('severityChart'), {
+    type: 'pie',
+    data: severityData,
+    options: { responsive: true, plugins: { title: { display: true, text: 'Findings by Severity' }, legend: { position: 'bottom' } } }
+});
+
+new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: categoryData,
+    options: { responsive: true, plugins: { title: { display: true, text: 'Findings by Category' }, legend: { position: 'bottom' } } }
+});
+
+function filterTable() {
+    const searchText = document.getElementById('searchBox').value.toLowerCase();
+    const severityFilter = document.getElementById('severityFilter').value;
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const table = document.getElementById('findingsTable');
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        if (cells.length === 0) continue;
+        
+        const severity = cells[0].textContent.trim();
+        const category = cells[1].textContent.trim();
+        const rowText = row.textContent.toLowerCase();
+        
+        let show = true;
+        if (searchText && !rowText.includes(searchText)) show = false;
+        if (severityFilter && severity !== severityFilter) show = false;
+        if (categoryFilter && category !== categoryFilter) show = false;
+        
+        row.style.display = show ? '' : 'none';
+    }
+}
+
+function sortTable(columnIndex) {
+    const table = document.getElementById('findingsTable');
+    const rows = Array.from(table.rows).slice(1);
+    const isAscending = table.getAttribute('data-sort-dir') === 'asc';
+    
+    rows.sort((a, b) => {
+        const aText = a.cells[columnIndex].textContent.trim();
+        const bText = b.cells[columnIndex].textContent.trim();
+        return isAscending ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    });
+    
+    table.setAttribute('data-sort-dir', isAscending ? 'desc' : 'asc');
+    rows.forEach(row => table.tBodies[0].appendChild(row));
+}
+</script>
+</div></body></html>

@@ -28,7 +28,7 @@ MigrationAnalyzer/
 ├── MigrationAnalyzer.Core/          # Core models and interfaces
 │   ├── Models.cs                    # AnalysisResult, DiagnosticFinding
 │   └── Interfaces/IMigrationAnalyzer
-├── MigrationAnalyzer.Analyzers/     # Roslyn-based analyzers
+├── MigrationAnalyzer.Analyzers/     # Roslyn-based analyzers (12 total)
 │   ├── WindowsApiAnalyzer.cs        # Windows API detection
 │   ├── PInvokeAnalyzer.cs           # P/Invoke detection
 │   ├── FileSystemAnalyzer.cs        # Path and file system issues
@@ -36,7 +36,11 @@ MigrationAnalyzer/
 │   ├── ConfigurationAnalyzer.cs     # Config file analysis
 │   ├── PackageAnalyzer.cs           # NuGet package assessment
 │   ├── QuartzAnalyzer.cs            # Quartz.NET configuration
-│   └── CyberArkAnalyzer.cs          # CyberArk integration
+│   ├── CyberArkAnalyzer.cs          # CyberArk integration
+│   ├── ComInteropAnalyzer.cs        # COM/ActiveX detection
+│   ├── CryptographyAnalyzer.cs      # DPAPI and Certificate Store
+│   ├── PlatformDetectionAnalyzer.cs # Platform-specific code
+│   └── IISCompatibilityAnalyzer.cs  # IIS and ASP.NET Classic
 ├── MigrationAnalyzer.Reports/       # Report generators
 │   ├── HtmlReportGenerator.cs       # Interactive HTML with charts
 │   ├── ExcelReportGenerator.cs      # Multi-sheet Excel workbook
@@ -45,7 +49,7 @@ MigrationAnalyzer/
 ├── MigrationAnalyzer.CLI/           # Command-line interface
 │   └── Program.cs                   # Entry point with options
 └── MigrationAnalyzer.Tests/         # Unit tests
-    └── WindowsApiAnalyzerTests.cs
+    └── (Multiple test files for each analyzer)
 ```
 
 ### Design Patterns
@@ -238,6 +242,75 @@ Analyzes CyberArk integration:
 - Windows Credential Provider usage
 - Hardcoded paths to CyberArk binaries
 - AppID configuration patterns
+
+### ComInteropAnalyzer (COM001-COM004)
+
+Detects COM Interop and ActiveX usage (Windows-only):
+- `[ComImport]`, `[ProgId]`, `[ComVisible]` attributes
+- `Type.GetTypeFromProgID()` and `GetTypeFromCLSID()` calls
+- `Marshal.ReleaseComObject()` and `GetActiveObject()`
+- `System.Runtime.InteropServices.ComTypes` namespace usage
+- Classes implementing COM interfaces
+
+**Example Finding:**
+```
+Severity: Critical
+File: ExcelExporter.cs:15
+Issue: Type.GetTypeFromProgID() call detected - creates COM objects via ProgID.
+Recommendation: COM objects cannot be created on Linux. Replace with managed .NET libraries or use REST/gRPC APIs.
+```
+
+### CryptographyAnalyzer (CRY001-CRY003)
+
+Detects Windows-specific cryptography APIs:
+- `ProtectedData.Protect/Unprotect` (DPAPI)
+- `X509Store` with `StoreLocation.LocalMachine` or `CurrentUser`
+- `DataProtectionScope` usage
+- `CspParameters` (Cryptographic Service Provider)
+- Legacy CSP classes (`RSACryptoServiceProvider`, etc.)
+
+**Example Finding:**
+```
+Severity: Critical
+File: SecurityHelper.cs:42
+Issue: ProtectedData.Protect() call detected (DPAPI encryption).
+Recommendation: DPAPI encryption is Windows-only. Migrate to ASP.NET Core Data Protection or use AES with secure key management.
+```
+
+### PlatformDetectionAnalyzer (PLT001-PLT004)
+
+Detects platform-specific code and conditional compilation:
+- `Environment.OSVersion` usage
+- `RuntimeInformation.IsOSPlatform(OSPlatform.Windows)`
+- `OperatingSystem.IsWindows()` (.NET 5+)
+- `PlatformID.Win32NT` comparisons
+- `#if WINDOWS` preprocessor directives
+
+**Example Finding:**
+```
+Severity: Medium
+File: SystemUtils.cs:28
+Issue: Environment.OSVersion usage detected.
+Recommendation: Environment.OSVersion returns different values on Windows vs Linux. Use RuntimeInformation.IsOSPlatform() for platform checks.
+```
+
+### IISCompatibilityAnalyzer (IIS001-IIS006)
+
+Enhanced detection of IIS and ASP.NET Classic dependencies:
+- `System.Web.HttpContext.Current` usage
+- `Server.MapPath()` from System.Web
+- HTTP Modules and Handlers in web.config
+- `Global.asax` file presence
+- Classes inheriting from `HttpApplication`, `IHttpModule`, `IHttpHandler`
+- IIS URL Rewrite rules
+
+**Example Finding:**
+```
+Severity: High
+File: MyHttpModule.cs:12
+Issue: Class 'LoggingModule' implements IHttpModule.
+Recommendation: IHttpModule is IIS-specific. Migrate to ASP.NET Core middleware pattern.
+```
 
 ---
 

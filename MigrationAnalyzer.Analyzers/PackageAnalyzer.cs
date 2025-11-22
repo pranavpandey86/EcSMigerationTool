@@ -23,7 +23,12 @@ namespace MigrationAnalyzer.Analyzers
             { "System.DirectoryServices", "Use Novell.Directory.Ldap.NETStandard instead" },
             { "System.DirectoryServices.AccountManagement", "Use Novell.Directory.Ldap.NETStandard instead" },
             { "System.Drawing", "Consider SkiaSharp or ImageSharp for cross-platform graphics" },
-            { "System.Drawing.Common", "Limited Linux support; use SkiaSharp or ImageSharp" }
+            { "System.Drawing.Common", "Limited Linux support; use SkiaSharp or ImageSharp" },
+            { "Microsoft.Win32.TaskScheduler", "Windows Task Scheduler - not available on Linux" },
+            { "System.ServiceModel", "WCF with Windows bindings may have compatibility issues" },
+            { "Microsoft.AspNet.Mvc", "ASP.NET Classic - migrate to ASP.NET Core" },
+            { "Microsoft.AspNet.WebApi", "ASP.NET Classic - migrate to ASP.NET Core" },
+            { "Microsoft.AspNet.WebPages", "ASP.NET Classic - migrate to ASP.NET Core" }
         };
 
         public async Task<IEnumerable<DiagnosticFinding>> AnalyzeAsync(Solution solution, CancellationToken ct)

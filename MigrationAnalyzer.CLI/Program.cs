@@ -125,7 +125,12 @@ namespace MigrationAnalyzer.CLI
                 new ConfigurationAnalyzer(),
                 new PackageAnalyzer(),
                 new QuartzAnalyzer(),
-                new CyberArkAnalyzer()
+                new CyberArkAnalyzer(),
+                // New critical analyzers
+                new ComInteropAnalyzer(),
+                new CryptographyAnalyzer(),
+                new PlatformDetectionAnalyzer(),
+                new IISCompatibilityAnalyzer()
             };
 
             var allFindings = new List<DiagnosticFinding>();

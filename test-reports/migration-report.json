@@ -1,0 +1,108 @@
+{
+  "AnalysisDate": "2025-11-22T10:59:41.772211+00:00",
+  "SolutionPath": "SampleProject/LegacySolution.sln",
+  "Findings": [
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 4,
+      "Message": "Usage of Windows-specific namespace \u0027Microsoft.Win32\u0027 detected.",
+      "Recommendation": "Remove Windows-specific dependencies and use cross-platform alternatives (e.g., Microsoft.Extensions.Configuration instead of Registry).",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 16,
+      "Message": "Usage of type \u0027RegistryKey\u0027 from Windows-specific namespace \u0027Microsoft.Win32\u0027.",
+      "Recommendation": "Replace with cross-platform alternatives compatible with Linux containers.",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 16,
+      "Message": "Usage of type \u0027Registry\u0027 from Windows-specific namespace \u0027Microsoft.Win32\u0027.",
+      "Recommendation": "Replace with cross-platform alternatives compatible with Linux containers.",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 16,
+      "Message": "Usage of Windows-specific type \u0027Registry\u0027 detected.",
+      "Recommendation": "Replace with cross-platform alternatives. Use ClaimsIdentity for WindowsIdentity, configuration for Registry, and logging for EventLog.",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 16,
+      "Message": "Usage of type \u0027LocalMachine\u0027 from Windows-specific namespace \u0027Microsoft.Win32\u0027.",
+      "Recommendation": "Replace with cross-platform alternatives compatible with Linux containers.",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 16,
+      "Message": "Usage of Windows-specific type \u0027RegistryKey\u0027 detected.",
+      "Recommendation": "Replace with cross-platform alternatives. Use ClaimsIdentity for WindowsIdentity, configuration for Registry, and logging for EventLog.",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 16,
+      "Message": "Usage of type \u0027OpenSubKey\u0027 from Windows-specific namespace \u0027Microsoft.Win32\u0027.",
+      "Recommendation": "Replace with cross-platform alternatives compatible with Linux containers.",
+      "Severity": 1,
+      "Category": 0,
+      "RuleId": "WIN001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 10,
+      "Message": "P/Invoke to native Windows DLL \u0027user32.dll\u0027 detected.",
+      "Recommendation": "This code will fail on Linux. Replace with a managed equivalent or use conditional compilation with platform checks.",
+      "Severity": 0,
+      "Category": 0,
+      "RuleId": "WIN002"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/Program.cs",
+      "LineNumber": 19,
+      "Message": "Hardcoded Windows path detected: \u0027C:\\Temp\\data.txt\u0027",
+      "Recommendation": "Use Path.Combine and relative paths, or configuration settings for paths. Avoid drive letters.",
+      "Severity": 1,
+      "Category": 1,
+      "RuleId": "FS001"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/LegacyApp.csproj",
+      "LineNumber": 1,
+      "Message": "Windows-specific package detected: \u0027Microsoft.Win32.Registry\u0027 version \u00275.0.0\u0027",
+      "Recommendation": "Review package documentation for Linux compatibility or find cross-platform alternatives.",
+      "Severity": 1,
+      "Category": 4,
+      "RuleId": "CFG002"
+    },
+    {
+      "FilePath": "/Users/pranavpandey/migrationtool/SampleProject/LegacyApp/LegacyApp.csproj",
+      "LineNumber": 1,
+      "Message": "Package \u0027Microsoft.Win32.Registry\u0027 v5.0.0: Windows-specific registry access",
+      "Recommendation": "Windows-specific registry access",
+      "Severity": 1,
+      "Category": 4,
+      "RuleId": "PKG001"
+    }
+  ],
+  "Duration": "00:00:01.9581798",
+  "TotalFilesScanned": 4,
+  "PackageInventory": {}
+}

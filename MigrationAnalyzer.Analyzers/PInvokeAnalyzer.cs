@@ -50,6 +50,7 @@ namespace MigrationAnalyzer.Analyzers
 
             public override void VisitMethodDeclaration(MethodDeclarationSyntax node)
             {
+                // Check for DllImport attribute (traditional P/Invoke)
                 var dllImport = node.AttributeLists
                     .SelectMany(al => al.Attributes)
                     .FirstOrDefault(a => a.Name.ToString().Contains("DllImport"));
@@ -65,6 +66,26 @@ namespace MigrationAnalyzer.Analyzers
                             AddFinding(node.GetLocation(), Severity.Critical,
                                 $"P/Invoke to native Windows DLL '{dllName}' detected.",
                                 "This code will fail on Linux. Replace with a managed equivalent or use conditional compilation with platform checks.");
+                        }
+                    }
+                }
+
+                // Check for LibraryImport attribute (.NET 7+ source-generated P/Invoke)
+                var libraryImport = node.AttributeLists
+                    .SelectMany(al => al.Attributes)
+                    .FirstOrDefault(a => a.Name.ToString().Contains("LibraryImport"));
+
+                if (libraryImport != null)
+                {
+                    var arg = libraryImport.ArgumentList?.Arguments.FirstOrDefault();
+                    if (arg != null && arg.Expression is LiteralExpressionSyntax libLiteral)
+                    {
+                        var dllName = libLiteral.Token.ValueText;
+                        if (WindowsDlls.Contains(dllName) || dllName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AddFinding(node.GetLocation(), Severity.Critical,
+                                $"LibraryImport to native Windows DLL '{dllName}' detected (.NET 7+ P/Invoke).",
+                                "This source-generated P/Invoke will fail on Linux. Replace with a managed equivalent or use conditional compilation with platform checks.");
                         }
                     }
                 }

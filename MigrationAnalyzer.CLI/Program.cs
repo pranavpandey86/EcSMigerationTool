@@ -126,11 +126,14 @@ namespace MigrationAnalyzer.CLI
                 new PackageAnalyzer(),
                 new QuartzAnalyzer(),
                 new CyberArkAnalyzer(),
-                // New critical analyzers
+                // Critical analyzers
                 new ComInteropAnalyzer(),
                 new CryptographyAnalyzer(),
                 new PlatformDetectionAnalyzer(),
-                new IISCompatibilityAnalyzer()
+                new IISCompatibilityAnalyzer(),
+                // New analyzers for additional detection patterns
+                new MSMQAnalyzer(),
+                new NamedPipesAnalyzer()
             };
 
             var allFindings = new List<DiagnosticFinding>();
@@ -178,9 +181,17 @@ namespace MigrationAnalyzer.CLI
                 Duration = sw.Elapsed,
                 TotalFilesScanned = solution.Projects.Sum(p => p.Documents.Count())
             };
+            
+            // Deduplicate findings from multiple analyzers
+            var originalCount = result.Findings.Count;
+            result.DeduplicateFindings();
+            if (originalCount != result.Findings.Count)
+            {
+                LogVerbose($"Deduplicated {originalCount - result.Findings.Count} duplicate findings");
+            }
 
             var severityCounts = result.GetSeverityCounts();
-            Console.WriteLine($"Total Findings:     {allFindings.Count}");
+            Console.WriteLine($"Total Findings:     {result.Findings.Count}");
             Console.WriteLine();
             
             foreach (var severity in Enum.GetValues<Severity>())
@@ -245,9 +256,26 @@ namespace MigrationAnalyzer.CLI
             Console.WriteLine($"✅ Reports generated in: {Path.GetFullPath(opts.OutputPath)}");
             Console.WriteLine();
             
-            if (severityCounts.GetValueOrDefault(Severity.Critical, 0) > 0)
+            // Set exit code based on findings for CI/CD integration
+            var criticalCount = severityCounts.GetValueOrDefault(Severity.Critical, 0);
+            var highCount = severityCounts.GetValueOrDefault(Severity.High, 0);
+            
+            if (criticalCount > 0)
             {
                 Console.WriteLine("⚠️  WARNING: Critical issues found! These will block Linux migration.");
+                Console.WriteLine($"   Exit code: 1 (Critical issues: {criticalCount})");
+                Environment.ExitCode = 1;
+            }
+            else if (highCount > 0)
+            {
+                Console.WriteLine("⚠️  Note: High priority issues found that require attention.");
+                Console.WriteLine($"   Exit code: 2 (High issues: {highCount})");
+                Environment.ExitCode = 2;
+            }
+            else
+            {
+                Console.WriteLine("✅ No critical or high priority issues found.");
+                Environment.ExitCode = 0;
             }
         }
 

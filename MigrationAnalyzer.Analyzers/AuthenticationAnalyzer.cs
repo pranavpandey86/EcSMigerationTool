@@ -165,6 +165,16 @@ namespace MigrationAnalyzer.Analyzers
                             "LDAP URL detected. Verify LDAP server is accessible from Linux containers.",
                             "Ensure proper network configuration and DNS resolution for LDAP servers in containerized environment.");
                     }
+
+                    // Check for LocalDB (Windows-only SQL Server feature)
+                    if (value.Contains("(localdb)", StringComparison.OrdinalIgnoreCase) ||
+                        value.Contains("LocalDB", StringComparison.OrdinalIgnoreCase) ||
+                        value.Contains("mssqllocaldb", StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddFinding(node.GetLocation(), Severity.Critical,
+                            "SQL Server LocalDB connection string detected.",
+                            "LocalDB is Windows-only. Use a full SQL Server instance, Azure SQL, or a containerized SQL Server for Linux deployment.");
+                    }
                 }
                 base.VisitLiteralExpression(node);
             }

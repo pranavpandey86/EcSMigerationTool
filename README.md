@@ -28,11 +28,11 @@ MigrationAnalyzer/
 ├── MigrationAnalyzer.Core/          # Core models and interfaces
 │   ├── Models.cs                    # AnalysisResult, DiagnosticFinding
 │   └── Interfaces/IMigrationAnalyzer
-├── MigrationAnalyzer.Analyzers/     # Roslyn-based analyzers (12 total)
+├── MigrationAnalyzer.Analyzers/     # Roslyn-based analyzers (14 total)
 │   ├── WindowsApiAnalyzer.cs        # Windows API detection
-│   ├── PInvokeAnalyzer.cs           # P/Invoke detection
+│   ├── PInvokeAnalyzer.cs           # P/Invoke and LibraryImport detection
 │   ├── FileSystemAnalyzer.cs        # Path and file system issues
-│   ├── AuthenticationAnalyzer.cs    # Auth patterns (Windows/LDAP)
+│   ├── AuthenticationAnalyzer.cs    # Auth patterns (Windows/LDAP/LocalDB)
 │   ├── ConfigurationAnalyzer.cs     # Config file analysis
 │   ├── PackageAnalyzer.cs           # NuGet package assessment
 │   ├── QuartzAnalyzer.cs            # Quartz.NET configuration
@@ -40,7 +40,9 @@ MigrationAnalyzer/
 │   ├── ComInteropAnalyzer.cs        # COM/ActiveX detection
 │   ├── CryptographyAnalyzer.cs      # DPAPI and Certificate Store
 │   ├── PlatformDetectionAnalyzer.cs # Platform-specific code
-│   └── IISCompatibilityAnalyzer.cs  # IIS and ASP.NET Classic
+│   ├── IISCompatibilityAnalyzer.cs  # IIS and ASP.NET Classic
+│   ├── MSMQAnalyzer.cs              # MSMQ (System.Messaging) detection
+│   └── NamedPipesAnalyzer.cs        # Named Pipes compatibility
 ├── MigrationAnalyzer.Reports/       # Report generators
 │   ├── HtmlReportGenerator.cs       # Interactive HTML with charts
 │   ├── ExcelReportGenerator.cs      # Multi-sheet Excel workbook

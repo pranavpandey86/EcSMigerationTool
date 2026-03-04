@@ -18,7 +18,13 @@ namespace MigrationAnalyzer.Core.Models
         Security,
         Configuration,
         Dependencies,
-        General
+        General,
+        Messaging,
+        Logging,
+        DataAccess,
+        Hosting,
+        IPC,
+        Transactions
     }
 
     public class DiagnosticFinding
@@ -32,6 +38,25 @@ namespace MigrationAnalyzer.Core.Models
         public string RuleId { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Tracks whether a particular analyzer ran and what it checked for,
+    /// even if it found no issues — so reports can show "checked but clear".
+    /// </summary>
+    public class AnalyzerCheckSummary
+    {
+        public string AnalyzerId { get; set; } = string.Empty;
+        public string AnalyzerName { get; set; } = string.Empty;
+        public AnalyzerCategory Category { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public int FindingsCount { get; set; }
+        public long ElapsedMs { get; set; }
+
+        /// <summary>Human-readable status: "X issues found" or "✅ No issues found"</summary>
+        public string Status => FindingsCount > 0
+            ? $"{FindingsCount} issue(s) found"
+            : "✅ No issues found — no changes required";
+    }
+
     public class AnalysisResult
     {
         public DateTime AnalysisDate { get; set; }
@@ -40,6 +65,11 @@ namespace MigrationAnalyzer.Core.Models
         public TimeSpan Duration { get; set; }
         public int TotalFilesScanned { get; set; }
         public Dictionary<string, string> PackageInventory { get; set; } = new();
+
+        /// <summary>
+        /// Summary of every analyzer that was executed, including those with 0 findings.
+        /// </summary>
+        public List<AnalyzerCheckSummary> CheckSummaries { get; set; } = new();
         
         /// <summary>
         /// Removes duplicate findings based on file path, line number, and rule ID
@@ -122,6 +152,8 @@ namespace MigrationAnalyzer.Core.Interfaces
         string Id { get; }
         string Name { get; }
         AnalyzerCategory Category { get; }
+        /// <summary>Human-readable description of what this analyzer checks for.</summary>
+        string Description => $"Checks for {Category} related migration issues";
         Task<IEnumerable<DiagnosticFinding>> AnalyzeAsync(Solution solution, CancellationToken ct);
     }
 }

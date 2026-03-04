@@ -36,6 +36,7 @@ namespace MigrationAnalyzer.Reports
                 .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
                 h1 { color: #333; border-bottom: 3px solid #0066cc; padding-bottom: 10px; }
                 h2 { color: #0066cc; margin-top: 30px; }
+                h3 { color: #333; }
                 .executive-summary { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
                 .metric { display: inline-block; margin: 10px 20px; }
                 .metric-label { font-weight: bold; color: #666; }
@@ -57,6 +58,10 @@ namespace MigrationAnalyzer.Reports
                 .filter-box input, .filter-box select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
                 .action-plan { background: #fff3e0; padding: 20px; border-left: 4px solid #f57c00; margin: 20px 0; }
                 .priority-item { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+                .check-summary { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #dee2e6; }
+                .check-clear { background: #e8f5e9; padding: 8px 12px; margin: 4px 0; border-radius: 4px; border-left: 3px solid #4caf50; }
+                .check-found { background: #fff3e0; padding: 8px 12px; margin: 4px 0; border-radius: 4px; border-left: 3px solid #ff9800; }
+                .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 8px; }
             </style>");
             sb.AppendLine("<script src='https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'></script>");
             sb.AppendLine("</head><body><div class='container'>");
@@ -71,20 +76,40 @@ namespace MigrationAnalyzer.Reports
             sb.AppendLine("<div class='executive-summary'>");
             sb.AppendLine("<h2>📊 Executive Summary</h2>");
             sb.AppendLine($"<div class='metric'><div class='metric-label'>Total Findings</div><div class='metric-value'>{result.Findings.Count}</div></div>");
+            sb.AppendLine($"<div class='metric'><div class='metric-label'>Analyzers Run</div><div class='metric-value'>{result.CheckSummaries.Count}</div></div>");
+            sb.AppendLine($"<div class='metric'><div class='metric-label'>Checks Clear</div><div class='metric-value'>{result.CheckSummaries.Count(c => c.FindingsCount == 0)}/{result.CheckSummaries.Count}</div></div>");
             sb.AppendLine($"<div class='metric'><div class='metric-label'>Files Scanned</div><div class='metric-value'>{result.TotalFilesScanned}</div></div>");
             sb.AppendLine($"<div class='metric'><div class='metric-label'>Estimated Effort</div><div class='metric-value'>{effortDays:F1} days</div></div>");
             sb.AppendLine("<h3>Findings by Severity</h3>");
             foreach (var severity in Enum.GetValues<Severity>())
             {
                 var count = severityCounts.GetValueOrDefault(severity, 0);
-                if (count > 0)
-                    sb.AppendLine($"<div class='metric'><span class='{severity.ToString().ToLower()}'>{severity}</span>: <strong>{count}</strong></div>");
+                sb.AppendLine($"<div class='metric'><span class='{severity.ToString().ToLower()}'>{severity}</span>: <strong>{count}</strong></div>");
             }
             sb.AppendLine("</div>");
             
             // Charts
             sb.AppendLine("<div class='chart-container'><canvas id='severityChart'></canvas></div>");
             sb.AppendLine("<div class='chart-container'><canvas id='categoryChart'></canvas></div>");
+
+            // ─── CHECK SUMMARY SECTION ───
+            sb.AppendLine("<div class='check-summary'>");
+            sb.AppendLine("<h2>🔍 All Checks Performed</h2>");
+            sb.AppendLine($"<p>The following <strong>{result.CheckSummaries.Count} analyzers</strong> were executed against your solution. Checks with no findings confirm that area is already container-ready.</p>");
+            sb.AppendLine("<div class='check-grid'>");
+
+            foreach (var check in result.CheckSummaries.OrderByDescending(c => c.FindingsCount))
+            {
+                var cssClass = check.FindingsCount > 0 ? "check-found" : "check-clear";
+                var icon = check.FindingsCount > 0 ? "⚠️" : "✅";
+                sb.AppendLine($"<div class='{cssClass}'>");
+                sb.AppendLine($"<strong>{icon} {System.Net.WebUtility.HtmlEncode(check.AnalyzerName)}</strong> ({check.Category})");
+                sb.AppendLine($"<br/><small>{System.Net.WebUtility.HtmlEncode(check.Description)}</small>");
+                sb.AppendLine($"<br/><em>{check.Status}</em> ({check.ElapsedMs}ms)");
+                sb.AppendLine("</div>");
+            }
+
+            sb.AppendLine("</div></div>");
             
             // Action Plan
             sb.AppendLine("<div class='action-plan'>");
@@ -99,6 +124,10 @@ namespace MigrationAnalyzer.Reports
             if (highCount > 0)
             {
                 sb.AppendLine($"<div class='priority-item'><strong>PRIORITY 2 - HIGH IMPACT:</strong> Address {highCount} high-severity issues. These require significant code changes. Estimated: {highCount * 3} days.</div>");
+            }
+            if (criticalCount == 0 && highCount == 0)
+            {
+                sb.AppendLine("<div class='priority-item'><strong>🎉 GREAT NEWS:</strong> No critical or high-priority migration blockers found.</div>");
             }
             sb.AppendLine("<div class='priority-item'><strong>PRIORITY 3:</strong> Update configurations and resolve medium/low priority issues.</div>");
             sb.AppendLine("<div class='priority-item'><strong>PRIORITY 4:</strong> Implement best practices and optimization recommendations.</div>");
@@ -128,17 +157,24 @@ namespace MigrationAnalyzer.Reports
             sb.AppendLine("<th onclick='sortTable(6)'>Recommendation</th>");
             sb.AppendLine("</tr></thead><tbody>");
             
-            foreach (var finding in result.Findings.OrderBy(f => f.Severity))
+            if (result.Findings.Count == 0)
             {
-                sb.AppendLine($"<tr class='{finding.Severity.ToString().ToLower()}-row'>");
-                sb.AppendLine($"<td><span class='{finding.Severity.ToString().ToLower()}'>{finding.Severity}</span></td>");
-                sb.AppendLine($"<td>{finding.Category}</td>");
-                sb.AppendLine($"<td>{finding.RuleId}</td>");
-                sb.AppendLine($"<td title='{finding.FilePath}'>{Path.GetFileName(finding.FilePath)}</td>");
-                sb.AppendLine($"<td>{finding.LineNumber}</td>");
-                sb.AppendLine($"<td>{System.Net.WebUtility.HtmlEncode(finding.Message)}</td>");
-                sb.AppendLine($"<td>{System.Net.WebUtility.HtmlEncode(finding.Recommendation)}</td>");
-                sb.AppendLine("</tr>");
+                sb.AppendLine("<tr><td colspan='7' style='text-align:center; padding:20px; font-style:italic;'>✅ No findings — all checks passed! Your solution appears container-ready.</td></tr>");
+            }
+            else
+            {
+                foreach (var finding in result.Findings.OrderBy(f => f.Severity))
+                {
+                    sb.AppendLine($"<tr class='{finding.Severity.ToString().ToLower()}-row'>");
+                    sb.AppendLine($"<td><span class='{finding.Severity.ToString().ToLower()}'>{finding.Severity}</span></td>");
+                    sb.AppendLine($"<td>{finding.Category}</td>");
+                    sb.AppendLine($"<td>{finding.RuleId}</td>");
+                    sb.AppendLine($"<td title='{finding.FilePath}'>{Path.GetFileName(finding.FilePath)}</td>");
+                    sb.AppendLine($"<td>{finding.LineNumber}</td>");
+                    sb.AppendLine($"<td>{System.Net.WebUtility.HtmlEncode(finding.Message)}</td>");
+                    sb.AppendLine($"<td>{System.Net.WebUtility.HtmlEncode(finding.Recommendation)}</td>");
+                    sb.AppendLine("</tr>");
+                }
             }
             
             sb.AppendLine("</tbody></table>");
@@ -147,22 +183,30 @@ namespace MigrationAnalyzer.Reports
             sb.AppendLine("<script>");
             
             // Severity chart data
+            var allSeverities = Enum.GetValues<Severity>();
             sb.AppendLine("const severityData = {");
-            sb.AppendLine($"  labels: [{string.Join(", ", severityCounts.Keys.Select(k => $"'{k}'"))}],");
+            sb.AppendLine($"  labels: [{string.Join(", ", allSeverities.Select(s => $"'{s}'"))}],");
             sb.AppendLine($"  datasets: [{{");
-            sb.AppendLine($"    data: [{string.Join(", ", severityCounts.Values)}],");
+            sb.AppendLine($"    data: [{string.Join(", ", allSeverities.Select(s => severityCounts.GetValueOrDefault(s, 0)))}],");
             sb.AppendLine("    backgroundColor: ['#d32f2f', '#f57c00', '#fbc02d', '#388e3c', '#1976d2']");
             sb.AppendLine("  }]");
             sb.AppendLine("};");
             
             // Category chart data
-            sb.AppendLine("const categoryData = {");
-            sb.AppendLine($"  labels: [{string.Join(", ", categoryCounts.Keys.Select(k => $"'{k}'"))}],");
-            sb.AppendLine($"  datasets: [{{");
-            sb.AppendLine($"    data: [{string.Join(", ", categoryCounts.Values)}],");
-            sb.AppendLine("    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']");
-            sb.AppendLine("  }]");
-            sb.AppendLine("};");
+            if (categoryCounts.Any())
+            {
+                sb.AppendLine("const categoryData = {");
+                sb.AppendLine($"  labels: [{string.Join(", ", categoryCounts.Keys.Select(k => $"'{k}'"))}],");
+                sb.AppendLine($"  datasets: [{{");
+                sb.AppendLine($"    data: [{string.Join(", ", categoryCounts.Values)}],");
+                sb.AppendLine("    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#FF6633', '#33CC99', '#6666FF', '#FF3366', '#66FF33']");
+                sb.AppendLine("  }]");
+                sb.AppendLine("};");
+            }
+            else
+            {
+                sb.AppendLine("const categoryData = { labels: ['No Issues'], datasets: [{ data: [1], backgroundColor: ['#4caf50'] }] };");
+            }
             
             sb.AppendLine(@"
 new Chart(document.getElementById('severityChart'), {
@@ -233,6 +277,9 @@ function sortTable(columnIndex) {
             // Summary Sheet
             CreateSummarySheet(workbook, result);
             
+            // Check Summary Sheet — shows all checks including 0 findings
+            CreateCheckSummarySheet(workbook, result);
+
             // Findings Sheet
             CreateFindingsSheet(workbook, result);
             
@@ -269,23 +316,31 @@ function sortTable(columnIndex) {
             sheet.Cell(5, 2).Value = result.Findings.Count;
             sheet.Cell(5, 2).Style.Font.Bold = true;
             
-            sheet.Cell(6, 1).Value = "Files Scanned:";
-            sheet.Cell(6, 2).Value = result.TotalFilesScanned;
+            sheet.Cell(6, 1).Value = "Analyzers Run:";
+            sheet.Cell(6, 2).Value = result.CheckSummaries.Count;
+
+            sheet.Cell(7, 1).Value = "Checks Clear:";
+            sheet.Cell(7, 2).Value = $"{result.CheckSummaries.Count(c => c.FindingsCount == 0)}/{result.CheckSummaries.Count}";
+            sheet.Cell(7, 2).Style.Font.FontColor = XLColor.DarkGreen;
             
-            sheet.Cell(7, 1).Value = "Analysis Duration:";
-            sheet.Cell(7, 2).Value = $"{result.Duration.TotalSeconds:F2} seconds";
+            sheet.Cell(8, 1).Value = "Files Scanned:";
+            sheet.Cell(8, 2).Value = result.TotalFilesScanned;
             
-            sheet.Cell(8, 1).Value = "Estimated Effort:";
-            sheet.Cell(8, 2).Value = $"{effortDays:F1} developer-days";
-            sheet.Cell(8, 2).Style.Font.Bold = true;
-            sheet.Cell(8, 2).Style.Font.FontColor = XLColor.DarkRed;
+            sheet.Cell(9, 1).Value = "Analysis Duration:";
+            sheet.Cell(9, 2).Value = $"{result.Duration.TotalSeconds:F2} seconds";
+            
+            sheet.Cell(10, 1).Value = "Estimated Effort:";
+            sheet.Cell(10, 2).Value = $"{effortDays:F1} developer-days";
+            sheet.Cell(10, 2).Style.Font.Bold = true;
+            sheet.Cell(10, 2).Style.Font.FontColor = XLColor.DarkRed;
             
             // Severity breakdown
-            sheet.Cell(10, 1).Value = "Findings by Severity";
-            sheet.Cell(10, 1).Style.Font.Bold = true;
-            sheet.Cell(10, 1).Style.Font.FontSize = 14;
+            int row = 12;
+            sheet.Cell(row, 1).Value = "Findings by Severity";
+            sheet.Cell(row, 1).Style.Font.Bold = true;
+            sheet.Cell(row, 1).Style.Font.FontSize = 14;
+            row++;
             
-            int row = 11;
             sheet.Cell(row, 1).Value = "Severity";
             sheet.Cell(row, 2).Value = "Count";
             sheet.Cell(row, 3).Value = "Effort (days)";
@@ -296,23 +351,26 @@ function sortTable(columnIndex) {
             foreach (var severity in Enum.GetValues<Severity>())
             {
                 var count = severityCounts.GetValueOrDefault(severity, 0);
-                if (count > 0)
+                var effort = count * (severity switch
                 {
-                    var effort = count * (severity switch
-                    {
-                        Severity.Critical => 5.0,
-                        Severity.High => 3.0,
-                        Severity.Medium => 1.0,
-                        Severity.Low => 0.5,
-                        Severity.Info => 0.1,
-                        _ => 0
-                    });
-                    
-                    sheet.Cell(row, 1).Value = severity.ToString();
-                    sheet.Cell(row, 2).Value = count;
-                    sheet.Cell(row, 3).Value = effort;
-                    
-                    // Color coding
+                    Severity.Critical => 5.0,
+                    Severity.High => 3.0,
+                    Severity.Medium => 1.0,
+                    Severity.Low => 0.5,
+                    Severity.Info => 0.1,
+                    _ => 0
+                });
+                
+                sheet.Cell(row, 1).Value = severity.ToString();
+                sheet.Cell(row, 2).Value = count;
+                sheet.Cell(row, 3).Value = effort;
+                
+                if (count == 0)
+                {
+                    sheet.Cell(row, 2).Style.Font.FontColor = XLColor.DarkGreen;
+                }
+                else
+                {
                     switch (severity)
                     {
                         case Severity.Critical:
@@ -322,8 +380,8 @@ function sortTable(columnIndex) {
                             sheet.Cell(row, 1).Style.Font.FontColor = XLColor.DarkOrange;
                             break;
                     }
-                    row++;
                 }
+                row++;
             }
             
             // Category breakdown
@@ -349,6 +407,62 @@ function sortTable(columnIndex) {
             sheet.Columns().AdjustToContents();
         }
 
+        private void CreateCheckSummarySheet(XLWorkbook workbook, AnalysisResult result)
+        {
+            var sheet = workbook.Worksheets.Add("Check Summary");
+
+            // Header
+            sheet.Cell(1, 1).Value = "All Migration Checks Performed";
+            sheet.Cell(1, 1).Style.Font.Bold = true;
+            sheet.Cell(1, 1).Style.Font.FontSize = 14;
+            sheet.Range(1, 1, 1, 6).Merge();
+
+            sheet.Cell(2, 1).Value = "Every check below was executed against your solution. Checks with 0 findings confirm that area is already container-ready.";
+            sheet.Range(2, 1, 2, 6).Merge();
+            sheet.Cell(2, 1).Style.Font.Italic = true;
+
+            // Column headers
+            int row = 4;
+            sheet.Cell(row, 1).Value = "Status";
+            sheet.Cell(row, 2).Value = "Analyzer";
+            sheet.Cell(row, 3).Value = "Category";
+            sheet.Cell(row, 4).Value = "Description";
+            sheet.Cell(row, 5).Value = "Findings";
+            sheet.Cell(row, 6).Value = "Time (ms)";
+            sheet.Range(row, 1, row, 6).Style.Font.Bold = true;
+            sheet.Range(row, 1, row, 6).Style.Fill.BackgroundColor = XLColor.DarkBlue;
+            sheet.Range(row, 1, row, 6).Style.Font.FontColor = XLColor.White;
+            row++;
+
+            foreach (var check in result.CheckSummaries.OrderByDescending(c => c.FindingsCount))
+            {
+                sheet.Cell(row, 1).Value = check.FindingsCount > 0 ? "⚠️ Issues Found" : "✅ Clear";
+                sheet.Cell(row, 2).Value = check.AnalyzerName;
+                sheet.Cell(row, 3).Value = check.Category.ToString();
+                sheet.Cell(row, 4).Value = check.Description;
+                sheet.Cell(row, 5).Value = check.FindingsCount;
+                sheet.Cell(row, 6).Value = check.ElapsedMs;
+
+                if (check.FindingsCount == 0)
+                {
+                    sheet.Range(row, 1, row, 6).Style.Font.FontColor = XLColor.DarkGreen;
+                }
+                else
+                {
+                    sheet.Cell(row, 1).Style.Font.FontColor = XLColor.DarkOrange;
+                    sheet.Cell(row, 1).Style.Font.Bold = true;
+                }
+                row++;
+            }
+
+            // Add autofilter
+            var dataRange = sheet.Range(4, 1, row - 1, 6);
+            dataRange.SetAutoFilter();
+
+            sheet.Columns().AdjustToContents();
+            sheet.Column(4).Width = 60; // Description column
+        }
+
         private void CreateFindingsSheet(XLWorkbook workbook, AnalysisResult result)
         {
             var sheet = workbook.Worksheets.Add("Findings");
@@ -368,40 +482,51 @@ function sortTable(columnIndex) {
             sheet.Range(1, 1, 1, 8).Style.Font.FontColor = XLColor.White;
 
             int row = 2;
-            foreach (var finding in result.Findings.OrderBy(f => f.Severity).ThenBy(f => f.Category))
+
+            if (result.Findings.Count == 0)
             {
-                var effort = finding.Severity switch
+                sheet.Cell(2, 1).Value = "✅ No findings — all checks passed!";
+                sheet.Range(2, 1, 2, 8).Merge();
+                sheet.Cell(2, 1).Style.Font.FontColor = XLColor.DarkGreen;
+                sheet.Cell(2, 1).Style.Font.Italic = true;
+                row = 3;
+            }
+            else
+            {
+                foreach (var finding in result.Findings.OrderBy(f => f.Severity).ThenBy(f => f.Category))
                 {
-                    Severity.Critical => 5.0,
-                    Severity.High => 3.0,
-                    Severity.Medium => 1.0,
-                    Severity.Low => 0.5,
-                    Severity.Info => 0.1,
-                    _ => 0
-                };
-                
-                sheet.Cell(row, 1).Value = finding.Severity.ToString();
-                sheet.Cell(row, 2).Value = finding.Category.ToString();
-                sheet.Cell(row, 3).Value = finding.RuleId;
-                sheet.Cell(row, 4).Value = finding.FilePath;
-                sheet.Cell(row, 5).Value = finding.LineNumber;
-                sheet.Cell(row, 6).Value = finding.Message;
-                sheet.Cell(row, 7).Value = finding.Recommendation;
-                sheet.Cell(row, 8).Value = effort;
-                
-                // Color coding for severity
-                switch (finding.Severity)
-                {
-                    case Severity.Critical:
-                        sheet.Range(row, 1, row, 8).Style.Font.FontColor = XLColor.DarkRed;
-                        sheet.Range(row, 1, row, 8).Style.Font.Bold = true;
-                        break;
-                    case Severity.High:
-                        sheet.Range(row, 1, row, 8).Style.Font.FontColor = XLColor.DarkOrange;
-                        break;
+                    var effort = finding.Severity switch
+                    {
+                        Severity.Critical => 5.0,
+                        Severity.High => 3.0,
+                        Severity.Medium => 1.0,
+                        Severity.Low => 0.5,
+                        Severity.Info => 0.1,
+                        _ => 0
+                    };
+                    
+                    sheet.Cell(row, 1).Value = finding.Severity.ToString();
+                    sheet.Cell(row, 2).Value = finding.Category.ToString();
+                    sheet.Cell(row, 3).Value = finding.RuleId;
+                    sheet.Cell(row, 4).Value = finding.FilePath;
+                    sheet.Cell(row, 5).Value = finding.LineNumber;
+                    sheet.Cell(row, 6).Value = finding.Message;
+                    sheet.Cell(row, 7).Value = finding.Recommendation;
+                    sheet.Cell(row, 8).Value = effort;
+                    
+                    switch (finding.Severity)
+                    {
+                        case Severity.Critical:
+                            sheet.Range(row, 1, row, 8).Style.Font.FontColor = XLColor.DarkRed;
+                            sheet.Range(row, 1, row, 8).Style.Font.Bold = true;
+                            break;
+                        case Severity.High:
+                            sheet.Range(row, 1, row, 8).Style.Font.FontColor = XLColor.DarkOrange;
+                            break;
+                    }
+                    
+                    row++;
                 }
-                
-                row++;
             }
 
             // Add autofilter
@@ -464,7 +589,9 @@ function sortTable(columnIndex) {
             
             if (row == 2)
             {
-                sheet.Cell(2, 1).Value = "No configuration issues found";
+                sheet.Cell(2, 1).Value = "✅ No configuration issues found — configurations are container-ready";
+                sheet.Range(2, 1, 2, 4).Merge();
+                sheet.Cell(2, 1).Style.Font.FontColor = XLColor.DarkGreen;
             }
             
             sheet.Columns().AdjustToContents();
@@ -486,11 +613,13 @@ function sortTable(columnIndex) {
             sb.AppendLine($"**Solution:** `{result.SolutionPath}`  ");
             sb.AppendLine($"**Duration:** {result.Duration.TotalSeconds:F2} seconds  ");
             sb.AppendLine($"**Files Scanned:** {result.TotalFilesScanned}  ");
+            sb.AppendLine($"**Analyzers Run:** {result.CheckSummaries.Count}  ");
             sb.AppendLine();
             
             sb.AppendLine("## 📊 Executive Summary");
             sb.AppendLine();
             sb.AppendLine($"- **Total Findings:** {result.Findings.Count}");
+            sb.AppendLine($"- **Checks Clear:** {result.CheckSummaries.Count(c => c.FindingsCount == 0)}/{result.CheckSummaries.Count}");
             sb.AppendLine($"- **Estimated Migration Effort:** {effortDays:F1} developer-days");
             sb.AppendLine();
             
@@ -499,30 +628,46 @@ function sortTable(columnIndex) {
             foreach (var severity in Enum.GetValues<Severity>())
             {
                 var count = severityCounts.GetValueOrDefault(severity, 0);
-                if (count > 0)
+                var icon = severity switch
                 {
-                    var icon = severity switch
-                    {
-                        Severity.Critical => "🔴",
-                        Severity.High => "🟠",
-                        Severity.Medium => "🟡",
-                        Severity.Low => "🟢",
-                        Severity.Info => "🔵",
-                        _ => "⚪"
-                    };
-                    sb.AppendLine($"- {icon} **{severity}:** {count}");
-                }
+                    Severity.Critical => "🔴",
+                    Severity.High => "🟠",
+                    Severity.Medium => "🟡",
+                    Severity.Low => "🟢",
+                    Severity.Info => "🔵",
+                    _ => "⚪"
+                };
+                sb.AppendLine($"- {icon} **{severity}:** {count}");
             }
             sb.AppendLine();
             
-            sb.AppendLine("### Findings by Category");
-            sb.AppendLine();
-            foreach (var category in categoryCounts.OrderByDescending(c => c.Value))
+            if (categoryCounts.Any())
             {
-                sb.AppendLine($"- **{category.Key}:** {category.Value}");
+                sb.AppendLine("### Findings by Category");
+                sb.AppendLine();
+                foreach (var category in categoryCounts.OrderByDescending(c => c.Value))
+                {
+                    sb.AppendLine($"- **{category.Key}:** {category.Value}");
+                }
+                sb.AppendLine();
+            }
+
+            // ─── ALL CHECKS PERFORMED ───
+            sb.AppendLine("## 🔍 All Checks Performed");
+            sb.AppendLine();
+            sb.AppendLine("The following checks were executed. Checks with no findings confirm that area needs no changes for container migration.");
+            sb.AppendLine();
+            sb.AppendLine("| Status | Analyzer | Category | Findings | What It Checks |");
+            sb.AppendLine("|--------|----------|----------|----------|----------------|");
+
+            foreach (var check in result.CheckSummaries.OrderBy(c => c.Category.ToString()).ThenByDescending(c => c.FindingsCount))
+            {
+                var status = check.FindingsCount > 0 ? "⚠️ Issues" : "✅ Clear";
+                sb.AppendLine($"| {status} | {check.AnalyzerName} | {check.Category} | {check.FindingsCount} | {check.Description} |");
             }
             sb.AppendLine();
-            
+
+            // Action Plan
             sb.AppendLine("## 🎯 Prioritized Action Plan");
             sb.AppendLine();
             
@@ -567,26 +712,37 @@ function sortTable(columnIndex) {
                 sb.AppendLine("Configuration and moderate code changes needed.");
                 sb.AppendLine();
             }
-            
-            sb.AppendLine("## 📋 Top Issues by Category");
-            sb.AppendLine();
-            
-            foreach (var category in categoryCounts.OrderByDescending(c => c.Value).Take(5))
+
+            if (criticalCount == 0 && highCount == 0 && mediumCount == 0)
             {
-                sb.AppendLine($"### {category.Key} ({category.Value} issues)");
+                sb.AppendLine("### 🎉 No significant migration issues found!");
+                sb.AppendLine();
+                sb.AppendLine("Your solution appears to be container-ready with only minor or informational items to review.");
+                sb.AppendLine();
+            }
+            
+            if (result.Findings.Count > 0)
+            {
+                sb.AppendLine("## 📋 Top Issues by Category");
                 sb.AppendLine();
                 
-                var topFindings = result.Findings
-                    .Where(f => f.Category == category.Key)
-                    .OrderBy(f => f.Severity)
-                    .Take(5);
-                
-                foreach (var finding in topFindings)
+                foreach (var category in categoryCounts.OrderByDescending(c => c.Value).Take(5))
                 {
-                    sb.AppendLine($"**{finding.Severity}** - `{Path.GetFileName(finding.FilePath)}:{finding.LineNumber}`");
-                    sb.AppendLine($"> {finding.Message}");
-                    sb.AppendLine($"> **Recommendation:** {finding.Recommendation}");
+                    sb.AppendLine($"### {category.Key} ({category.Value} issues)");
                     sb.AppendLine();
+                    
+                    var topFindings = result.Findings
+                        .Where(f => f.Category == category.Key)
+                        .OrderBy(f => f.Severity)
+                        .Take(5);
+                    
+                    foreach (var finding in topFindings)
+                    {
+                        sb.AppendLine($"**{finding.Severity}** - `{Path.GetFileName(finding.FilePath)}:{finding.LineNumber}`");
+                        sb.AppendLine($"> {finding.Message}");
+                        sb.AppendLine($"> **Recommendation:** {finding.Recommendation}");
+                        sb.AppendLine();
+                    }
                 }
             }
             
@@ -601,7 +757,7 @@ function sortTable(columnIndex) {
             sb.AppendLine();
             
             sb.AppendLine("---");
-            sb.AppendLine($"*Report generated by MigrationAnalyzer on {result.AnalysisDate:yyyy-MM-dd HH:mm:ss}*");
+            sb.AppendLine($"*Report generated by MigrationAnalyzer v2.0 on {result.AnalysisDate:yyyy-MM-dd HH:mm:ss}*");
             
             File.WriteAllText(Path.Combine(outputPath, "migration-summary.md"), sb.ToString());
         }

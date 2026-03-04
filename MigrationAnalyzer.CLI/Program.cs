@@ -43,7 +43,7 @@ namespace MigrationAnalyzer.CLI
         static async Task Main(string[] args)
         {
             Console.WriteLine("╔═══════════════════════════════════════════════╗");
-            Console.WriteLine("║   .NET Migration Analyzer v1.0                ║");
+            Console.WriteLine("║   .NET Migration Analyzer v2.0                ║");
             Console.WriteLine("║   Windows VM → Linux Container Assessment     ║");
             Console.WriteLine("╚═══════════════════════════════════════════════╝");
             Console.WriteLine();
@@ -116,32 +116,63 @@ namespace MigrationAnalyzer.CLI
             Console.WriteLine($"✓ Loaded {solution.Projects.Count()} projects");
             Console.WriteLine();
 
+            // Register ALL analyzers — comprehensive migration coverage
             var analyzers = new List<IMigrationAnalyzer>
             {
+                // Windows API & Native Code
                 new WindowsApiAnalyzer(),
                 new PInvokeAnalyzer(),
-                new FileSystemAnalyzer(),
-                new AuthenticationAnalyzer(),
-                new ConfigurationAnalyzer(),
-                new PackageAnalyzer(),
-                new QuartzAnalyzer(),
-                new CyberArkAnalyzer(),
-                // Critical analyzers
                 new ComInteropAnalyzer(),
-                new CryptographyAnalyzer(),
                 new PlatformDetectionAnalyzer(),
+                
+                // File System & Environment
+                new FileSystemAnalyzer(),
+                new EnvironmentAnalyzer(),
+                
+                // Authentication & Security
+                new AuthenticationAnalyzer(),
+                new CyberArkAnalyzer(),
+                new CryptographyAnalyzer(),
+                
+                // Configuration
+                new ConfigurationAnalyzer(),
+                new LegacyConfigAnalyzer(),
+                
+                // Dependencies
+                new PackageAnalyzer(),
+                
+                // Hosting & Services
                 new IISCompatibilityAnalyzer(),
-                // New analyzers for additional detection patterns
+                new WindowsServiceAnalyzer(),
+                new WCFAnalyzer(),
+                new ContainerReadinessAnalyzer(),
+                
+                // Messaging & IPC
                 new MSMQAnalyzer(),
-                new NamedPipesAnalyzer()
+                new NamedPipesAnalyzer(),
+                new SynchronizationAnalyzer(),
+                
+                // Data Access & Transactions
+                new DataAccessAnalyzer(),
+                new DistributedTransactionAnalyzer(),
+                
+                // Jobs & Scheduling
+                new QuartzAnalyzer(),
+                new ScheduledJobAnalyzer(),
+                
+                // Logging
+                new LoggingAnalyzer()
             };
 
             var allFindings = new List<DiagnosticFinding>();
-            var severityCountsLive = new Dictionary<Severity, int>();
+            var checkSummaries = new List<AnalyzerCheckSummary>();
+            
+            Console.WriteLine($"🔍 Running {analyzers.Count} analyzers...");
+            Console.WriteLine();
             
             foreach (var analyzer in analyzers)
             {
-                Console.Write($"🔍 Running {analyzer.Name}... ");
+                Console.Write($"  🔍 {analyzer.Name}... ");
                 var analyzerSw = Stopwatch.StartNew();
                 
                 try
@@ -151,20 +182,45 @@ namespace MigrationAnalyzer.CLI
                     allFindings.AddRange(filteredFindings);
                     
                     analyzerSw.Stop();
-                    Console.WriteLine($"✓ ({filteredFindings.Count} findings in {analyzerSw.ElapsedMilliseconds}ms)");
-                    
-                    // Update live counts
-                    foreach (var finding in filteredFindings)
+
+                    // Track every check — including those with 0 findings
+                    checkSummaries.Add(new AnalyzerCheckSummary
                     {
-                        severityCountsLive[finding.Severity] = severityCountsLive.GetValueOrDefault(finding.Severity, 0) + 1;
+                        AnalyzerId = analyzer.Id,
+                        AnalyzerName = analyzer.Name,
+                        Category = analyzer.Category,
+                        Description = analyzer.Description,
+                        FindingsCount = filteredFindings.Count,
+                        ElapsedMs = analyzerSw.ElapsedMilliseconds
+                    });
+
+                    if (filteredFindings.Count > 0)
+                    {
+                        Console.WriteLine($"⚠️  {filteredFindings.Count} finding(s) ({analyzerSw.ElapsedMilliseconds}ms)");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"✅ Clear ({analyzerSw.ElapsedMilliseconds}ms)");
                     }
                     
-                    LogVerbose($"  Details: {string.Join(", ", filteredFindings.GroupBy(f => f.Severity).Select(g => $"{g.Key}={g.Count()}"))}");
+                    LogVerbose($"    Details: {string.Join(", ", filteredFindings.GroupBy(f => f.Severity).Select(g => $"{g.Key}={g.Count()}"))}");
                 }
                 catch (Exception ex)
                 {
+                    analyzerSw.Stop();
                     Console.WriteLine($"❌ Failed: {ex.Message}");
-                    LogVerbose($"  Stack: {ex.StackTrace}");
+                    LogVerbose($"    Stack: {ex.StackTrace}");
+
+                    // Still track failed analyzers
+                    checkSummaries.Add(new AnalyzerCheckSummary
+                    {
+                        AnalyzerId = analyzer.Id,
+                        AnalyzerName = analyzer.Name,
+                        Category = analyzer.Category,
+                        Description = analyzer.Description,
+                        FindingsCount = 0,
+                        ElapsedMs = analyzerSw.ElapsedMilliseconds
+                    });
                 }
             }
 
@@ -178,6 +234,7 @@ namespace MigrationAnalyzer.CLI
                 AnalysisDate = DateTime.Now,
                 SolutionPath = opts.SolutionPath,
                 Findings = allFindings,
+                CheckSummaries = checkSummaries,
                 Duration = sw.Elapsed,
                 TotalFilesScanned = solution.Projects.Sum(p => p.Documents.Count())
             };
@@ -192,24 +249,23 @@ namespace MigrationAnalyzer.CLI
 
             var severityCounts = result.GetSeverityCounts();
             Console.WriteLine($"Total Findings:     {result.Findings.Count}");
+            Console.WriteLine($"Analyzers Run:      {checkSummaries.Count}");
+            Console.WriteLine($"Checks Clear:       {checkSummaries.Count(c => c.FindingsCount == 0)}/{checkSummaries.Count}");
             Console.WriteLine();
             
             foreach (var severity in Enum.GetValues<Severity>())
             {
                 var count = severityCounts.GetValueOrDefault(severity, 0);
-                if (count > 0)
+                var icon = severity switch
                 {
-                    var icon = severity switch
-                    {
-                        Severity.Critical => "🔴",
-                        Severity.High => "🟠",
-                        Severity.Medium => "🟡",
-                        Severity.Low => "🟢",
-                        Severity.Info => "🔵",
-                        _ => "⚪"
-                    };
-                    Console.WriteLine($"  {icon} {severity,-10}: {count,4}");
-                }
+                    Severity.Critical => "🔴",
+                    Severity.High => "🟠",
+                    Severity.Medium => "🟡",
+                    Severity.Low => "🟢",
+                    Severity.Info => "🔵",
+                    _ => "⚪"
+                };
+                Console.WriteLine($"  {icon} {severity,-10}: {count,4}");
             }
             
             Console.WriteLine();
